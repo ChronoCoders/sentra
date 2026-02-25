@@ -1,0 +1,23 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+backend/vpn-ui
+
+# Logs
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Backups
+*.backup
+
+# IDEs
+.vscode/
+.idea/
+
+# Vendor
+vendor/
