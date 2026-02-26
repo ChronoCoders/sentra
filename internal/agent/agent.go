@@ -35,7 +35,6 @@ func (a *Agent) Run(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			var status *models.Status
-			var err error
 
 			if a.wg != nil {
 				s, err := a.wg.GetStatus(ctx)
