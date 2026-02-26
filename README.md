@@ -42,9 +42,16 @@ Sentra v2 follows a modular architecture:
     cd sentra
     ```
 
-2.  Run with Docker Compose:
+2.  Setup WireGuard Interface (Host):
     ```bash
-    docker-compose up -d --build
+    # Run the setup script to configure wg1 interface and generate keys
+    sudo ./scripts/setup_wireguard.sh
+    ```
+    This script will output the client configuration for your phone/laptop.
+
+3.  Run with Docker Compose:
+    ```bash
+    docker compose up -d --build
     ```
 
     **Note**: The Agent requires host network mode to access the WireGuard interface. Ensure your `docker-compose.yml` is configured correctly.
