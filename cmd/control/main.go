@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -81,9 +82,11 @@ func main() {
 	// Init API Server
 	srv := api.NewServer(cfg, db, client, hub, bus)
 
+	// Filter out noisy TLS handshake errors for internal agent reporting
 	httpServer := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: srv,
+		Addr:     ":" + cfg.Port,
+		Handler:  srv,
+		ErrorLog: stdlog.New(&tlsErrorFilter{}, "", 0),
 	}
 
 	// Graceful shutdown
@@ -129,4 +132,18 @@ func main() {
 	}
 
 	log.Info().Msg("server exited")
+}
+
+// tlsErrorFilter filters out noisy TLS handshake errors from http.Server logs
+type tlsErrorFilter struct{}
+
+func (f *tlsErrorFilter) Write(p []byte) (n int, err error) {
+	msg := string(p)
+	// Filter out "unknown certificate" and "remote error" which are common with self-signed certs
+	// and browser/client probes or when user skips verification.
+	if strings.Contains(msg, "TLS handshake error") && (strings.Contains(msg, "unknown certificate") || strings.Contains(msg, "remote error")) {
+		return len(p), nil
+	}
+	// Forward other errors to stderr
+	return os.Stderr.Write(p)
 }
