@@ -11,6 +11,7 @@ import (
 
 	"github.com/ChronoCoders/sentra/internal/control"
 	"github.com/ChronoCoders/sentra/internal/models"
+	"github.com/rs/zerolog/log"
 )
 
 // Reporter defines how the agent reports status to the control plane.
@@ -43,6 +44,7 @@ func NewHTTPReporter(serverURL, token string, insecure bool) *HTTPReporter {
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	if insecure {
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		log.Info().Msg("insecure mode enabled: skipping TLS verification")
 	}
 
 	return &HTTPReporter{

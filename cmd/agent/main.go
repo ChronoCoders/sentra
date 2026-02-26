@@ -20,6 +20,7 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 
 	cfg := config.Load()
+	log.Info().Bool("insecure", cfg.Insecure).Str("control_url", cfg.ControlURL).Msg("loaded config")
 
 	// Init WG Manager
 	wg, err := wireguard.NewWGManager(cfg.WGInterface)
