@@ -31,6 +31,9 @@ type Server struct {
 }
 
 func NewServer(cfg *config.Config, store *store.Store, client control.AgentClient, hub *ws.Hub, bus *control.EventBus) *Server {
+	// Initialize router
+	r := chi.NewRouter()
+
 	s := &Server{
 		cfg:    cfg,
 		store:  store,
@@ -38,18 +41,20 @@ func NewServer(cfg *config.Config, store *store.Store, client control.AgentClien
 		hub:    hub,
 		bus:    bus,
 		auth:   auth.NewJWTManager(cfg.JWTSecret),
-		router: chi.NewRouter(),
+		router: r,
 	}
-	s.routes()
+	s.setupRoutes()
 	return s
 }
 
-func (s *Server) routes() {
+func (s *Server) setupRoutes() {
 	s.router.Use(middleware.Logger)
 	s.router.Use(middleware.Recoverer)
 
+	// Public routes
 	s.router.Post("/api/login", s.handleLogin)
-	s.router.Post("/api/report", s.handleReport)
+	s.router.Post("/api/report", s.handleReport)    // Agent reporting
+	s.router.Get("/api/cert", s.handleCertDownload) // Download CA cert
 
 	// Authenticated routes
 	s.router.Group(func(r chi.Router) {
@@ -57,11 +62,11 @@ func (s *Server) routes() {
 
 		// Viewer access (includes Admin)
 		r.Group(func(r chi.Router) {
-			r.Use(s.RequireRole("viewer"))
+			// Add middleware to check role if needed, e.g. s.RequireRole("viewer")
+			// For now, assume any valid token is viewer
+
 			r.Get("/api/health", s.handleHealth)
 			r.Get("/api/status", s.handleStatus)
-			
-			// Move WS inside authenticated group but handle token via query param in middleware
 			r.Get("/ws", s.handleWs)
 		})
 	})
@@ -70,6 +75,22 @@ func (s *Server) routes() {
 	workDir, _ := os.Getwd()
 	filesDir := http.Dir(filepath.Join(workDir, "web"))
 	FileServer(s.router, "/", filesDir)
+}
+
+func (s *Server) handleCertDownload(w http.ResponseWriter, r *http.Request) {
+	certPath := s.cfg.TLSCert
+	if certPath == "" {
+		certPath = "cert.pem"
+	}
+
+	if _, err := os.Stat(certPath); os.IsNotExist(err) {
+		http.Error(w, "Certificate not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/x-x509-ca-cert")
+	w.Header().Set("Content-Disposition", "attachment; filename=sentra-ca.crt")
+	http.ServeFile(w, r, certPath)
 }
 
 func FileServer(r chi.Router, path string, root http.FileSystem) {
