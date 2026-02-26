@@ -13,6 +13,7 @@ import (
 	"github.com/ChronoCoders/sentra/internal/config"
 	"github.com/ChronoCoders/sentra/internal/control"
 	"github.com/ChronoCoders/sentra/internal/store"
+	sentratls "github.com/ChronoCoders/sentra/internal/tls"
 	"github.com/ChronoCoders/sentra/internal/wireguard"
 	"github.com/ChronoCoders/sentra/internal/ws"
 	"github.com/rs/zerolog"
@@ -87,9 +88,32 @@ func main() {
 
 	// Graceful shutdown
 	go func() {
-		log.Info().Str("port", cfg.Port).Msg("starting control server")
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal().Err(err).Msg("server error")
+		if cfg.TLSAuto {
+			if cfg.TLSCert == "" {
+				cfg.TLSCert = "cert.pem"
+			}
+			if cfg.TLSKey == "" {
+				cfg.TLSKey = "key.pem"
+			}
+
+			if _, err := os.Stat(cfg.TLSCert); os.IsNotExist(err) {
+				log.Info().Msg("generating self-signed certificates")
+				if err := sentratls.GenerateSelfSignedCert(cfg.TLSCert, cfg.TLSKey); err != nil {
+					log.Fatal().Err(err).Msg("failed to generate certificates")
+				}
+			}
+		}
+
+		if cfg.TLSCert != "" && cfg.TLSKey != "" {
+			log.Info().Str("port", cfg.Port).Str("cert", cfg.TLSCert).Msg("starting control server (HTTPS)")
+			if err := httpServer.ListenAndServeTLS(cfg.TLSCert, cfg.TLSKey); err != nil && err != http.ErrServerClosed {
+				log.Fatal().Err(err).Msg("server error")
+			}
+		} else {
+			log.Info().Str("port", cfg.Port).Msg("starting control server (HTTP)")
+			if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatal().Err(err).Msg("server error")
+			}
 		}
 	}()
 

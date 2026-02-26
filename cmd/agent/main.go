@@ -34,7 +34,7 @@ func main() {
 	}
 
 	// Init Reporter
-	reporter := agent.NewHTTPReporter(cfg.ControlURL, cfg.AuthToken)
+	reporter := agent.NewHTTPReporter(cfg.ControlURL, cfg.AuthToken, cfg.Insecure)
 
 	// Init Agent
 	agt := agent.New(wg, reporter, cfg.ServerID)

@@ -3,6 +3,7 @@
 *.dll
 *.so
 *.dylib
+backend/vpn-ui
 
 # Logs
 *.log
@@ -11,13 +12,12 @@
 *.db
 *.sqlite
 
+# Backups
+*.backup
+
 # IDEs
 .vscode/
 .idea/
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Vendor
 vendor/

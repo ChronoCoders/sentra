@@ -71,6 +71,30 @@ Key variables:
 -   `PORT`: API server port (default: `8080`).
 -   `JWT_SECRET`: Secret key for JWT authentication.
 
+### SSL Configuration
+
+Sentra supports HTTPS out of the box. You can either provide your own certificates or let Sentra generate self-signed certificates for local development.
+
+Key variables:
+-   `SENTRA_TLS_CERT`: Path to the TLS certificate file.
+-   `SENTRA_TLS_KEY`: Path to the TLS private key file.
+-   `SENTRA_TLS_AUTO`: Set to `true` to automatically generate self-signed certificates if `SENTRA_TLS_CERT` and `SENTRA_TLS_KEY` are not provided or do not exist. (Default: `false`)
+
+Example (Docker Compose):
+```yaml
+environment:
+  - SENTRA_TLS_AUTO=true
+```
+
+### Agent Configuration (SSL)
+
+If you are using self-signed certificates on the Control Plane, you must configure the Agent to skip verification:
+
+```yaml
+environment:
+  - SENTRA_INSECURE_SKIP_VERIFY=true
+```
+
 ## Features & Status
 
 -   [x] **Core Architecture**: Control/Agent split, EventBus, StatusCache.

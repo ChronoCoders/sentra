@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -38,12 +39,18 @@ type HTTPReporter struct {
 	client    *http.Client
 }
 
-func NewHTTPReporter(serverURL, token string) *HTTPReporter {
+func NewHTTPReporter(serverURL, token string, insecure bool) *HTTPReporter {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	if insecure {
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	return &HTTPReporter{
 		serverURL: serverURL,
 		token:     token,
 		client: &http.Client{
-			Timeout: 5 * time.Second,
+			Timeout:   5 * time.Second,
+			Transport: tr,
 		},
 	}
 }
