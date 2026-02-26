@@ -15,7 +15,7 @@ import (
 )
 
 // GenerateSelfSignedCert generates a self-signed certificate and key file.
-func GenerateSelfSignedCert(certPath, keyPath string) error {
+func GenerateSelfSignedCert(certPath, keyPath string, sans []string) error {
 	log.Info().Msg("generating self-signed certificate")
 
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -39,6 +39,15 @@ func GenerateSelfSignedCert(certPath, keyPath string) error {
 	// Add localhost and IP addresses
 	template.DNSNames = append(template.DNSNames, "localhost")
 	template.IPAddresses = append(template.IPAddresses, net.ParseIP("127.0.0.1"))
+
+	// Add SANs
+	for _, san := range sans {
+		if ip := net.ParseIP(san); ip != nil {
+			template.IPAddresses = append(template.IPAddresses, ip)
+		} else {
+			template.DNSNames = append(template.DNSNames, san)
+		}
+	}
 
 	// Create certificate
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)

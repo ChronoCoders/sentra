@@ -98,7 +98,7 @@ func main() {
 
 			if _, err := os.Stat(cfg.TLSCert); os.IsNotExist(err) {
 				log.Info().Msg("generating self-signed certificates")
-				if err := sentratls.GenerateSelfSignedCert(cfg.TLSCert, cfg.TLSKey); err != nil {
+				if err := sentratls.GenerateSelfSignedCert(cfg.TLSCert, cfg.TLSKey, cfg.TLSSANs); err != nil {
 					log.Fatal().Err(err).Msg("failed to generate certificates")
 				}
 			}

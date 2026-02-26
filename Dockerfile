@@ -22,7 +22,7 @@ FROM alpine:latest
 WORKDIR /app
 
 # Install WireGuard tools (wg-quick, wg) for Agent if needed (though we use userspace/kernel via netlink, tools are helpful for debug)
-RUN apk add --no-cache wireguard-tools iproute2
+RUN apk add --no-cache wireguard-tools iproute2 openssl
 
 COPY --from=builder /app/control .
 COPY --from=builder /app/agent .

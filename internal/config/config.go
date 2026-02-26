@@ -17,11 +17,18 @@ type Config struct {
 	TLSCert     string
 	TLSKey      string
 	TLSAuto     bool
+	TLSSANs     []string
 	Insecure    bool
 }
 
 // Load loads configuration from environment variables.
 func Load() *Config {
+	sans := getEnv("SENTRA_TLS_SANS", "")
+	var sanList []string
+	if sans != "" {
+		sanList = strings.Split(sans, ",")
+	}
+
 	return &Config{
 		DBPath:      getEnv("SENTRA_DB", "sentra.db"),
 		JWTSecret:   getEnv("SENTRA_JWT_SECRET", "dev-secret"),
@@ -33,6 +40,7 @@ func Load() *Config {
 		TLSCert:     getEnv("SENTRA_TLS_CERT", ""),
 		TLSKey:      getEnv("SENTRA_TLS_KEY", ""),
 		TLSAuto:     getEnv("SENTRA_TLS_AUTO", "false") == "true",
+		TLSSANs:     sanList,
 		Insecure:    getEnv("SENTRA_INSECURE_SKIP_VERIFY", "false") == "true",
 	}
 }
