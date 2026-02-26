@@ -38,10 +38,16 @@ func (a *Agent) Run(ctx context.Context) error {
 			var err error
 
 			if a.wg != nil {
-				status, err = a.wg.GetStatus(ctx)
+				s, err := a.wg.GetStatus(ctx)
 				if err != nil {
-					log.Warn().Err(err).Msg("failed to get wireguard status (continuing with system metrics)")
+					// Only log warning if it's NOT the "file does not exist" error which is expected in containers without WG
+					errMsg := err.Error()
+					if errMsg != "failed to get device wg0: file does not exist" && errMsg != "link not found" {
+						log.Warn().Err(err).Msg("failed to get wireguard status (continuing with system metrics)")
+					}
 					status = &models.Status{}
+				} else {
+					status = s
 				}
 			} else {
 				status = &models.Status{}
