@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	stdlog "log"
 	"net/http"
 	"os"
 	"os/signal"
