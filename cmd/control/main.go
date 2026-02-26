@@ -14,6 +14,7 @@ import (
 	"github.com/ChronoCoders/sentra/internal/control"
 	"github.com/ChronoCoders/sentra/internal/store"
 	"github.com/ChronoCoders/sentra/internal/wireguard"
+	"github.com/ChronoCoders/sentra/internal/ws"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -35,18 +36,41 @@ func main() {
 	// Init WG Manager
 	wg, err := wireguard.NewWGManager(cfg.WGInterface)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to init wireguard manager")
+		// Log error but continue for Control plane as it might be just a dashboard/management server
+		// However, the embedded agent will fail to report WG status if this fails.
+		// User instruction: "The system must fail clearly (log error and continue without peers) instead of generating fake peers."
+		log.Error().Err(err).Msg("failed to init wireguard manager - local agent reporting will be limited")
+	} else {
+		defer wg.Close()
+		// Verify if interface is accessible
+		if _, err := wg.GetStatus(context.Background()); err != nil {
+			log.Error().Err(err).Msg("failed to get status from wireguard interface - local agent reporting will be limited")
+		}
 	}
-	defer wg.Close()
 
 	// Init EventBus
 	bus := control.NewEventBus()
 
+	// Init WebSocket Hub
+	hub := ws.NewHub()
+	go hub.Run()
+
 	// Init StatusCache (Client)
-	client := control.NewStatusCache(bus)
+	client := control.NewStatusCache(bus, hub)
 
 	// Init Agent
-	ag := agent.New(wg, bus, "local")
+	var ag *agent.Agent
+	reporter := agent.NewEventBusReporter(bus)
+
+	if wg != nil {
+		ag = agent.New(wg, reporter, "local")
+	} else {
+		// Create agent without WG manager (will only report system metrics)
+		// Or we can modify Agent to handle nil WG manager
+		// Let's modify Agent to accept nil and skip WG reporting
+		ag = agent.New(nil, reporter, "local")
+	}
+
 	go func() {
 		if err := ag.Run(context.Background()); err != nil {
 			log.Error().Err(err).Msg("agent run error")
@@ -54,7 +78,7 @@ func main() {
 	}()
 
 	// Init API Server
-	srv := api.NewServer(cfg, db, client)
+	srv := api.NewServer(cfg, db, client, hub, bus)
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.Port,

@@ -4,20 +4,25 @@ import (
 	"context"
 	"time"
 
-	"github.com/ChronoCoders/sentra/internal/control"
 	"github.com/ChronoCoders/sentra/internal/models"
 	"github.com/ChronoCoders/sentra/internal/wireguard"
 	"github.com/rs/zerolog/log"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
+	"github.com/shirou/gopsutil/v4/host"
+	"github.com/shirou/gopsutil/v4/load"
+	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/shirou/gopsutil/v4/net"
 )
 
 type Agent struct {
-	wg       *wireguard.WGManager
-	bus      *control.EventBus
+	wg       wireguard.Manager
+	reporter Reporter
 	serverID string
 }
 
-func New(wg *wireguard.WGManager, bus *control.EventBus, serverID string) *Agent {
-	return &Agent{wg: wg, bus: bus, serverID: serverID}
+func New(wg wireguard.Manager, reporter Reporter, serverID string) *Agent {
+	return &Agent{wg: wg, reporter: reporter, serverID: serverID}
 }
 
 func (a *Agent) Run(ctx context.Context) error {
@@ -29,20 +34,77 @@ func (a *Agent) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			status, err := a.wg.GetStatus(ctx)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to get status")
-				continue
+			var status *models.Status
+			var err error
+
+			if a.wg != nil {
+				status, err = a.wg.GetStatus(ctx)
+				if err != nil {
+					log.Warn().Err(err).Msg("failed to get wireguard status (continuing with system metrics)")
+					status = &models.Status{}
+				}
+			} else {
+				status = &models.Status{}
 			}
+
+			// Collect System Metrics
+			sysInfo := a.collectSystemInfo()
+			status.System = sysInfo
 
 			event := models.StatusEvent{
 				ServerID: a.serverID,
 				Status:   status,
 				Time:     time.Now(),
 			}
-			a.bus.Publish(event)
 
-			log.Info().Int("peer_count", len(status.Peers)).Msg("agent status report")
+			if err := a.reporter.Report(ctx, event); err != nil {
+				log.Error().Err(err).Msg("failed to report status")
+			} else {
+				log.Info().Int("peer_count", len(status.Peers)).Msg("agent status reported")
+			}
 		}
 	}
+}
+
+func (a *Agent) collectSystemInfo() models.SystemInfo {
+	var info models.SystemInfo
+
+	if h, err := host.Info(); err == nil {
+		info.Hostname = h.Hostname
+		info.OS = h.OS
+		info.KernelVersion = h.KernelVersion
+		info.Platform = h.Platform
+		info.Uptime = h.Uptime
+	}
+
+	if c, err := cpu.Counts(true); err == nil {
+		info.CPUCount = c
+	}
+
+	if p, err := cpu.Percent(0, false); err == nil && len(p) > 0 {
+		info.CPUPercent = p[0]
+	}
+
+	if v, err := mem.VirtualMemory(); err == nil {
+		info.MemoryTotal = v.Total
+		info.MemoryUsed = v.Used
+		info.MemoryPercent = v.UsedPercent
+	}
+
+	if d, err := disk.Usage("/"); err == nil {
+		info.DiskTotal = d.Total
+		info.DiskUsed = d.Used
+		info.DiskPercent = d.UsedPercent
+	}
+
+	if l, err := load.Avg(); err == nil {
+		info.LoadAverage = l.Load1
+	}
+
+	if n, err := net.IOCounters(false); err == nil && len(n) > 0 {
+		info.NetBytesSent = n[0].BytesSent
+		info.NetBytesRecv = n[0].BytesRecv
+	}
+
+	return info
 }

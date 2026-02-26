@@ -7,6 +7,7 @@ import (
 )
 
 type AgentClient interface {
-	GetStatus(ctx context.Context) (*models.Status, error)
-	ListPeers(ctx context.Context) ([]models.Peer, error)
+	GetStatus(ctx context.Context, serverID string) (*models.Status, error)
+	ListPeers(ctx context.Context, serverID string) ([]models.Peer, error)
+	GetAllStatuses() []models.StatusEvent
 }

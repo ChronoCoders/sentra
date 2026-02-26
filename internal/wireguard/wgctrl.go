@@ -76,5 +76,6 @@ func mapPeer(p wgtypes.Peer) models.Peer {
 		LatestHandshake: p.LastHandshakeTime,
 		ReceiveBytes:    p.ReceiveBytes,
 		TransmitBytes:   p.TransmitBytes,
+		KeepAlive:       int(p.PersistentKeepaliveInterval.Seconds()),
 	}
 }

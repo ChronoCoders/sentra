@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentra Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="h-full font-sans text-gray-900 antialiased">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8 hidden fade-in">
+        <div class="sm:mx-auto sm:w-full sm:max-w-md">
+            <div class="flex justify-center">
+                <div class="h-16 w-16 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <i data-lucide="shield-check" class="text-white h-10 w-10"></i>
+                </div>
+            </div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Sign in to Sentra</h2>
+            <p class="mt-2 text-center text-sm text-gray-600">
+                Secure Infrastructure Control Plane
+            </p>
+        </div>
+
+        <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+            <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
+                <form class="space-y-6" onsubmit="event.preventDefault(); login();">
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i data-lucide="mail" class="h-5 w-5 text-gray-400"></i>
+                            </div>
+                            <input id="email" name="email" type="email" required class="pl-10 block w-full border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border" placeholder="admin@sentra.io">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i data-lucide="lock" class="h-5 w-5 text-gray-400"></i>
+                            </div>
+                            <input id="password" name="password" type="password" required class="pl-10 block w-full border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border" placeholder="••••••••">
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200">
+                            Sign in
+                        </button>
+                    </div>
+                    <div id="login-error" class="text-red-600 text-sm text-center hidden bg-red-50 p-2 rounded border border-red-100"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Layout -->
+    <div id="dashboard" class="min-h-full flex flex-col hidden fade-in">
+        <nav class="bg-indigo-600 shadow-lg z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center gap-3">
+                        <span class="text-white font-bold text-xl tracking-tight">Sentra</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-indigo-100 text-sm hidden sm:block" id="user-email-display"></span>
+                        <button onclick="logout()" class="bg-indigo-700 p-2 rounded-full text-indigo-200 hover:text-white hover:bg-indigo-600 focus:outline-none transition-colors duration-200" title="Logout">
+                            <i data-lucide="log-out" class="h-5 w-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-1 py-8 bg-gray-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                
+                <!-- Page Header -->
+                <div class="md:flex md:items-center md:justify-between mb-8">
+                    <div class="flex-1 min-w-0">
+                        <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                            Infrastructure Overview
+                        </h2>
+                    </div>
+                    <div class="mt-4 flex md:mt-0 md:ml-4">
+                        <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i data-lucide="refresh-cw" class="h-4 w-4 mr-2"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+                    <!-- Total Servers -->
+                    <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-indigo-50 rounded-md p-3">
+                                    <i data-lucide="server" class="h-6 w-6 text-indigo-600"></i>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Total Servers</dt>
+                                        <dd class="text-2xl font-semibold text-gray-900" id="stat-total-servers">0</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Healthy Servers -->
+                    <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-green-50 rounded-md p-3">
+                                    <i data-lucide="activity" class="h-6 w-6 text-green-600"></i>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Online Agents</dt>
+                                        <dd class="text-2xl font-semibold text-gray-900" id="stat-healthy">0</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Peers -->
+                    <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-blue-50 rounded-md p-3">
+                                    <i data-lucide="users" class="h-6 w-6 text-blue-600"></i>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Active Peers</dt>
+                                        <dd class="text-2xl font-semibold text-gray-900" id="stat-total-peers">0</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Load -->
+                    <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-orange-50 rounded-md p-3">
+                                    <i data-lucide="cpu" class="h-6 w-6 text-orange-600"></i>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Avg Load</dt>
+                                        <dd class="text-2xl font-semibold text-gray-900" id="stat-avg-load">-</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Network Stats Grid -->
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+    <!-- Total Data Transfer (Up) -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-50 rounded-md p-3">
+                    <i data-lucide="upload-cloud" class="h-6 w-6 text-blue-600"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Total Upload</dt>
+                        <dd class="text-2xl font-semibold text-gray-900" id="stat-total-up">0 B</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Data Transfer (Down) -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-50 rounded-md p-3">
+                    <i data-lucide="download-cloud" class="h-6 w-6 text-green-600"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Total Download</dt>
+                        <dd class="text-2xl font-semibold text-gray-900" id="stat-total-down">0 B</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Upload Speed -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-indigo-50 rounded-md p-3">
+                    <i data-lucide="arrow-up-circle" class="h-6 w-6 text-indigo-600"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Current Up Rate</dt>
+                        <dd class="text-2xl font-semibold text-gray-900" id="stat-rate-up">0 B/s</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Download Speed -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-teal-50 rounded-md p-3">
+                    <i data-lucide="arrow-down-circle" class="h-6 w-6 text-teal-600"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Current Down Rate</dt>
+                        <dd class="text-2xl font-semibold text-gray-900" id="stat-rate-down">0 B/s</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Traffic Graph & Peers -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+    <!-- Traffic Graph -->
+    <div class="bg-white p-6 rounded-lg shadow lg:col-span-2 border border-gray-100">
+        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4 flex items-center gap-2">
+            <i data-lucide="activity" class="h-5 w-5 text-indigo-500"></i>
+            Real-time Traffic History
+        </h3>
+        <div class="h-64">
+            <canvas id="trafficChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Peer Usage List (Compact) -->
+    <div class="bg-white p-6 rounded-lg shadow border border-gray-100 flex flex-col">
+        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4 flex items-center gap-2">
+            <i data-lucide="users" class="h-5 w-5 text-indigo-500"></i>
+            Top Peers by Usage
+        </h3>
+        <div class="flex-1 overflow-y-auto" style="max-height: 250px;" id="peer-list-container">
+            <p class="text-gray-500 text-sm italic">Waiting for peer data...</p>
+        </div>
+    </div>
+</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Server List -->
+                <div class="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-100">
+                    <div class="px-4 py-5 sm:px-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Connected Agents</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Real-time status updates from your infrastructure.</p>
+                        </div>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Live
+                        </span>
+                    </div>
+                    <ul id="server-list" class="divide-y divide-gray-200">
+                        <!-- Rows injected here -->
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('sentra_token');
+        let userEmail = localStorage.getItem('sentra_email');
+        const servers = {};
+        const networkStats = {}; // { serverId: { lastUp, lastDown, lastTime } }
+        let trafficChart;
+        let ws;
+
+        // Initialize icons on load
+        lucide.createIcons();
+
+        function init() {
+            if (!token) {
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+            } else {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                if (userEmail) document.getElementById('user-email-display').innerText = userEmail;
+                initChart();
+                connectWS();
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('trafficChart').getContext('2d');
+            trafficChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Upload (KB/s)',
+                            data: [],
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Download (KB/s)',
+                            data: [],
+                            borderColor: 'rgb(16, 185, 129)',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f3f4f6' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('login-error');
+            
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    token = data.token;
+                    localStorage.setItem('sentra_token', token);
+                    localStorage.setItem('sentra_email', email);
+                    userEmail = email;
+                    init();
+                } else {
+                    errorDiv.innerText = 'Invalid credentials';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error(e);
+                errorDiv.innerText = 'Error connecting to server';
+                errorDiv.classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('sentra_token');
+            localStorage.removeItem('sentra_email');
+            token = null;
+            if (ws) ws.close();
+            init();
+        }
+
+        function connectWS() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws?token=${token}`);
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                servers[data.server_id] = data;
+                
+                // Update Network Stats
+                updateNetworkStats(data);
+                
+                render();
+            };
+
+            ws.onclose = () => {
+                setTimeout(connectWS, 3000);
+            };
+        }
+
+        function updateNetworkStats(data) {
+            const sid = data.server_id;
+            const sys = data.status.system || {};
+            const now = new Date().getTime();
+            const currentUp = sys.net_bytes_sent || 0;
+            const currentDown = sys.net_bytes_recv || 0;
+
+            if (!networkStats[sid]) {
+                networkStats[sid] = { lastUp: currentUp, lastDown: currentDown, lastTime: now, rateUp: 0, rateDown: 0 };
+            } else {
+                const prev = networkStats[sid];
+                const timeDiff = (now - prev.lastTime) / 1000; // seconds
+
+                if (timeDiff > 0) {
+                    let diffUp = currentUp - prev.lastUp;
+                    let diffDown = currentDown - prev.lastDown;
+                    
+                    if (diffUp < 0) diffUp = currentUp;
+                    if (diffDown < 0) diffDown = currentDown;
+
+                    prev.rateUp = diffUp / timeDiff;
+                    prev.rateDown = diffDown / timeDiff;
+                }
+                prev.lastUp = currentUp;
+                prev.lastDown = currentDown;
+                prev.lastTime = now;
+            }
+
+            // Update Global Stats Texts
+            let totalUp = 0, totalDown = 0;
+            let totalRateUp = 0, totalRateDown = 0;
+            let allPeers = [];
+
+            Object.values(servers).forEach(s => {
+                const sSys = s.status.system || {};
+                totalUp += (sSys.net_bytes_sent || 0);
+                totalDown += (sSys.net_bytes_recv || 0);
+                
+                if (networkStats[s.server_id]) {
+                    // Only count rate if recent
+                    if (now - networkStats[s.server_id].lastTime < 20000) {
+                        totalRateUp += networkStats[s.server_id].rateUp;
+                        totalRateDown += networkStats[s.server_id].rateDown;
+                    }
+                }
+
+                if (s.status.peers) {
+                    s.status.peers.forEach(p => {
+                        allPeers.push({ ...p, server_id: s.server_id });
+                    });
+                }
+            });
+
+            document.getElementById('stat-total-up').innerText = formatBytes(totalUp);
+            document.getElementById('stat-total-down').innerText = formatBytes(totalDown);
+            document.getElementById('stat-rate-up').innerText = formatBytes(totalRateUp) + '/s';
+            document.getElementById('stat-rate-down').innerText = formatBytes(totalRateDown) + '/s';
+
+            // Update Peer List
+            updatePeerList(allPeers);
+        }
+
+        function updatePeerList(peers) {
+            const container = document.getElementById('peer-list-container');
+            if (peers.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm italic">No active peers found.</p>';
+                return;
+            }
+
+            // Sort by usage (desc)
+            peers.sort((a, b) => (b.receive_bytes + b.transmit_bytes) - (a.receive_bytes + a.transmit_bytes));
+
+            let html = '<ul class="divide-y divide-gray-200">';
+            peers.forEach(p => {
+                html += `
+                <li class="py-3 flex justify-between items-center">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium text-gray-900 truncate" title="${p.public_key}">
+                            ${p.public_key.substring(0, 8)}...
+                        </p>
+                        <p class="text-xs text-gray-500 truncate">
+                            ${p.endpoint || 'No Endpoint'} <span class="text-indigo-500 text-xs ml-1">${p.persistent_keepalive ? `(KA: ${p.persistent_keepalive}s)` : ''}</span>
+                        </p>
+                    </div>
+                    <div class="ml-4 flex-shrink-0 text-right">
+                        <p class="text-xs text-gray-500">Up: <span class="text-gray-900">${formatBytes(p.receive_bytes)}</span></p>
+                        <p class="text-xs text-gray-500">Down: <span class="text-gray-900">${formatBytes(p.transmit_bytes)}</span></p>
+                    </div>
+                </li>
+                `;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        // Periodic chart update (every 2s)
+        setInterval(() => {
+            if (!trafficChart) return;
+            
+            let totalRateUp = 0, totalRateDown = 0;
+            Object.values(networkStats).forEach(stats => {
+                // Only count active servers (last seen < 20s)
+                if (new Date().getTime() - stats.lastTime < 20000) {
+                    totalRateUp += stats.rateUp;
+                    totalRateDown += stats.rateDown;
+                }
+            });
+
+            const now = new Date().toLocaleTimeString();
+            
+            trafficChart.data.labels.push(now);
+            trafficChart.data.datasets[0].data.push(totalRateUp / 1024); // KB/s
+            trafficChart.data.datasets[1].data.push(totalRateDown / 1024); // KB/s
+
+            if (trafficChart.data.labels.length > 20) {
+                trafficChart.data.labels.shift();
+                trafficChart.data.datasets[0].data.shift();
+                trafficChart.data.datasets[1].data.shift();
+            }
+            trafficChart.update();
+        }, 2000);
+
+        function formatBytes(bytes) {
+            if (bytes === undefined || bytes === null) return 'N/A';
+            if (bytes === 0) return '0 B';
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+            return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+        }
+
+        function getStatusColor(percent) {
+            if (percent > 90) return 'bg-red-500';
+            if (percent > 70) return 'bg-yellow-500';
+            return 'bg-green-500'; // Changed to green for healthy/low usage
+        }
+        
+        // Progress bar component
+        function progressBar(label, percent, valueText) {
+            const colorClass = getStatusColor(percent);
+            return `
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-xs font-medium text-gray-500">${label}</span>
+                        <span class="text-xs font-medium text-gray-700">${valueText}</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                        <div class="${colorClass} h-1.5 rounded-full transition-all duration-500" style="width: ${Math.min(percent, 100)}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function render() {
+            const container = document.getElementById('server-list');
+            container.innerHTML = '';
+            
+            const serverList = Object.values(servers).sort((a,b) => a.server_id.localeCompare(b.server_id));
+            
+            // Update Stats
+            document.getElementById('stat-total-servers').innerText = serverList.length;
+            
+            let healthyCount = 0;
+            let totalPeers = 0;
+            let totalLoad = 0;
+            let loadCount = 0;
+
+            serverList.forEach(s => {
+                const status = s.status || {};
+                const sys = status.system || {};
+                const isStale = (new Date() - new Date(s.time)) > 20000; // 20s timeout
+                
+                if (!isStale) healthyCount++;
+                if (status.peers) totalPeers += status.peers.length;
+                if (sys.load_average) {
+                    totalLoad += sys.load_average;
+                    loadCount++;
+                }
+
+                const row = document.createElement('li');
+                row.className = "px-4 py-4 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out";
+                
+                // Calculate percentages for bars
+                const cpu = sys.cpu_percent || 0;
+                const mem = sys.memory_percent || 0;
+                const disk = sys.disk_percent || 0;
+                
+                const memText = `${formatBytes(sys.memory_used)} / ${formatBytes(sys.memory_total)}`;
+
+                row.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center min-w-0 gap-4">
+                             <div class="flex-shrink-0">
+                                <span class="inline-flex items-center justify-center h-12 w-12 rounded-full ${isStale ? 'bg-gray-100' : 'bg-indigo-100'}">
+                                    <i data-lucide="server" class="${isStale ? 'text-gray-400' : 'text-indigo-600'} h-6 w-6"></i>
+                                </span>
+                             </div>
+                             <div>
+                                <div class="text-lg font-medium text-indigo-600 truncate flex items-center gap-2">
+                                    ${s.server_id}
+                                    ${isStale ? 
+                                        '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Offline</span>' : 
+                                        '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Online</span>'
+                                    }
+                                </div>
+                                <div class="flex items-center text-sm text-gray-500 mt-1">
+                                    <i data-lucide="monitor" class="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400"></i>
+                                    ${sys.hostname || '-'} (${sys.os || '-'}/${sys.arch || '-'})
+                                </div>
+                             </div>
+                        </div>
+                        <div class="text-right text-sm text-gray-500">
+                            <div class="flex items-center justify-end gap-1 mb-1">
+                                <i data-lucide="clock" class="h-4 w-4 text-gray-400"></i>
+                                <span>${new Date(s.time).toLocaleTimeString()}</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Last Seen</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-6 mt-4 border-t border-gray-100 pt-4">
+                        ${progressBar('CPU Usage', cpu, cpu.toFixed(1) + '%')}
+                        ${progressBar('Memory Usage', mem, mem.toFixed(1) + '%')}
+                        ${progressBar('Disk Usage', disk, disk.toFixed(1) + '%')}
+                        
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-xs font-medium text-gray-500">Load Avg</span>
+                                <span class="text-xs font-medium text-gray-700">${sys.load_average ? sys.load_average.toFixed(2) : '-'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs font-medium text-gray-500">Peers</span>
+                                <span class="text-xs font-medium text-gray-700">${status.peers ? status.peers.length : 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            // Update global stats
+            document.getElementById('stat-healthy').innerText = healthyCount;
+            document.getElementById('stat-total-peers').innerText = totalPeers;
+            document.getElementById('stat-avg-load').innerText = loadCount > 0 ? (totalLoad / loadCount).toFixed(2) : '-';
+
+            // Re-render icons for new elements
+            lucide.createIcons();
+        }
+
+        init();
+    </script>
+</body>
+</html>

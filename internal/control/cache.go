@@ -4,18 +4,27 @@ import (
 	"context"
 	"sync"
 
+	"time"
+
 	"github.com/ChronoCoders/sentra/internal/models"
 )
 
-type StatusCache struct {
-	mu      sync.RWMutex
-	current *models.Status
-	bus     *EventBus
+type StatusBroadcaster interface {
+	Broadcast(event models.StatusEvent)
 }
 
-func NewStatusCache(bus *EventBus) *StatusCache {
+type StatusCache struct {
+	mu          sync.RWMutex
+	statuses    map[string]*models.Status
+	bus         *EventBus
+	broadcaster StatusBroadcaster
+}
+
+func NewStatusCache(bus *EventBus, broadcaster StatusBroadcaster) *StatusCache {
 	c := &StatusCache{
-		bus: bus,
+		bus:         bus,
+		broadcaster: broadcaster,
+		statuses:    make(map[string]*models.Status),
 	}
 	go c.listen()
 	return c
@@ -25,25 +34,39 @@ func (c *StatusCache) listen() {
 	ch := c.bus.Subscribe()
 	for event := range ch {
 		c.mu.Lock()
-		c.current = event.Status
+		c.statuses[event.ServerID] = event.Status
 		c.mu.Unlock()
+		if c.broadcaster != nil {
+			c.broadcaster.Broadcast(event)
+		}
 	}
 }
 
-func (c *StatusCache) GetStatus(ctx context.Context) (*models.Status, error) {
+func (c *StatusCache) GetStatus(ctx context.Context, serverID string) (*models.Status, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	if c.current == nil {
-		return nil, nil
-	}
-	return c.current, nil
+	return c.statuses[serverID], nil
 }
 
-func (c *StatusCache) ListPeers(ctx context.Context) ([]models.Peer, error) {
+func (c *StatusCache) GetAllStatuses() []models.StatusEvent {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	if c.current == nil {
-		return nil, nil
+	var events []models.StatusEvent
+	for id, status := range c.statuses {
+		events = append(events, models.StatusEvent{
+			ServerID: id,
+			Status:   status,
+			Time:     time.Now(),
+		})
 	}
-	return c.current.Peers, nil
+	return events
+}
+
+func (c *StatusCache) ListPeers(ctx context.Context, serverID string) ([]models.Peer, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if status, ok := c.statuses[serverID]; ok {
+		return status.Peers, nil
+	}
+	return nil, nil
 }

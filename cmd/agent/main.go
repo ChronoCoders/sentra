@@ -9,7 +9,6 @@ import (
 
 	"github.com/ChronoCoders/sentra/internal/agent"
 	"github.com/ChronoCoders/sentra/internal/config"
-	"github.com/ChronoCoders/sentra/internal/control"
 	"github.com/ChronoCoders/sentra/internal/wireguard"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -25,15 +24,20 @@ func main() {
 	// Init WG Manager
 	wg, err := wireguard.NewWGManager(cfg.WGInterface)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to init wireguard manager")
+		log.Fatal().Err(err).Msg("failed to init wireguard manager. ensure interface exists and process has permissions")
 	}
 	defer wg.Close()
 
-	// Init EventBus
-	bus := control.NewEventBus()
+	// Verify if interface is accessible
+	if _, err := wg.GetStatus(context.Background()); err != nil {
+		log.Fatal().Err(err).Msg("failed to get status from wireguard interface. ensure interface is up")
+	}
+
+	// Init Reporter
+	reporter := agent.NewHTTPReporter(cfg.ControlURL, cfg.AuthToken)
 
 	// Init Agent
-	agt := agent.New(wg, bus, "standalone-agent")
+	agt := agent.New(wg, reporter, cfg.ServerID)
 
 	// Run Agent
 	ctx, cancel := context.WithCancel(context.Background())

@@ -11,6 +11,9 @@ type Config struct {
 	JWTSecret   string
 	WGInterface string
 	Port        string
+	ControlURL  string
+	AuthToken   string
+	ServerID    string
 }
 
 // Load loads configuration from environment variables.
@@ -20,6 +23,9 @@ func Load() *Config {
 		JWTSecret:   getEnv("SENTRA_JWT_SECRET", "dev-secret"),
 		WGInterface: getEnv("SENTRA_WG_INTERFACE", "wg0"),
 		Port:        getEnv("PORT", "8080"),
+		ControlURL:  getEnv("SENTRA_CONTROL_URL", "http://localhost:8080"),
+		AuthToken:   getEnv("SENTRA_AUTH_TOKEN", ""),
+		ServerID:    getEnv("SENTRA_SERVER_ID", "local"),
 	}
 }
 
