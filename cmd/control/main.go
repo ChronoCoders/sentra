@@ -62,23 +62,22 @@ func main() {
 	client := control.NewStatusCache(bus, hub)
 
 	// Init Agent
-	var ag *agent.Agent
-	reporter := agent.NewEventBusReporter(bus)
-
-	if wg != nil {
-		ag = agent.New(wg, reporter, "local")
-	} else {
-		// Create agent without WG manager (will only report system metrics)
-		// Or we can modify Agent to handle nil WG manager
-		// Let's modify Agent to accept nil and skip WG reporting
-		ag = agent.New(nil, reporter, "local")
-	}
-
-	go func() {
-		if err := ag.Run(context.Background()); err != nil {
-			log.Error().Err(err).Msg("agent run error")
+	if !cfg.DisableAgent {
+		reporter := agent.NewEventBusReporter(bus)
+		var ag *agent.Agent
+		if wg != nil {
+			ag = agent.New(wg, reporter, "local")
+		} else {
+			ag = agent.New(nil, reporter, "local")
 		}
-	}()
+		go func() {
+			if err := ag.Run(context.Background()); err != nil {
+				log.Error().Err(err).Msg("agent run error")
+			}
+		}()
+	} else {
+		log.Info().Msg("internal agent disabled by configuration")
+	}
 
 	// Init API Server
 	srv := api.NewServer(cfg, db, client, hub, bus)

@@ -19,6 +19,7 @@ type Config struct {
 	TLSAuto     bool
 	TLSSANs     []string
 	Insecure    bool
+	DisableAgent bool
 }
 
 // Load loads configuration from environment variables.
@@ -42,6 +43,7 @@ func Load() *Config {
 		TLSAuto:     getEnv("SENTRA_TLS_AUTO", "false") == "true",
 		TLSSANs:     sanList,
 		Insecure:    getEnv("SENTRA_INSECURE_SKIP_VERIFY", "false") == "true",
+		DisableAgent: getEnv("SENTRA_DISABLE_AGENT", "false") == "true",
 	}
 }
 
