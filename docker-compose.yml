@@ -38,7 +38,7 @@ services:
       - SENTRA_CONTROL_URL=https://127.0.0.1:8081
       - SENTRA_AUTH_TOKEN=agent_secret_token
       - SENTRA_SERVER_ID=agent-1
-      - SENTRA_WG_INTERFACE=wg0
+      - SENTRA_WG_INTERFACE=wg1
       - HOST_PROC=/host/proc
       - HOST_SYS=/host/sys
       - HOST_ETC=/host/etc
